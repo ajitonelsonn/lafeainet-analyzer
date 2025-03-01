@@ -63,7 +63,7 @@ export async function analyzeReports() {
       FROM network_reports r
       LEFT JOIN analysis_results a ON r.id = a.report_id
       WHERE a.sentiment_score IS NULL
-      AND r.created_at >= NOW() - INTERVAL 120 MINUTE;
+      AND r.created_at >= NOW() - INTERVAL 45 MINUTE;
     `);
 
     console.log(`Found ${reports.length} reports to analyze`);
