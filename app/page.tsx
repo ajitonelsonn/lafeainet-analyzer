@@ -10,7 +10,6 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import ManualAnalysisButton from "@/components/ManualAnalysisButton";
 
 interface AnalysisStats {
   totalReports: number;
@@ -34,8 +33,8 @@ export default function Home() {
   const [sortField, setSortField] = useState<string>("reportCount");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  const fetchStats = useCallback(async () => {
-    if (refreshing) return;
+  const fetchStats = useCallback(async (isManualRefresh = false) => {
+    if (refreshing && !isManualRefresh) return;
 
     setRefreshing(true);
 
@@ -55,7 +54,7 @@ export default function Home() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [refreshing]);
+  }, []); // Remove refreshing from dependencies
 
   useEffect(() => {
     fetchStats();
@@ -120,7 +119,7 @@ export default function Home() {
           </h1>
           <div className="flex items-center gap-4">
             <button
-              onClick={fetchStats}
+              onClick={() => fetchStats(true)} // Pass true to indicate manual refresh
               disabled={refreshing}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
             >
@@ -129,7 +128,6 @@ export default function Home() {
               />
               Refresh Data
             </button>
-            <ManualAnalysisButton />
           </div>
         </div>
 
