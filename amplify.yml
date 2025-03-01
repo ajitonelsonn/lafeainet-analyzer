@@ -1,0 +1,27 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+        - echo "Creating .env file with environment variables"
+        - |
+          echo "DB_HOST=${DB_HOST}" >> .env
+          echo "DB_USER=${DB_USER}" >> .env
+          echo "DB_PASSWORD=${DB_PASSWORD}" >> .env
+          echo "DB_NAME=${DB_NAME}" >> .env
+          echo "DB_PORT=${DB_PORT}" >> .env
+          echo "TOGETHER_API_KEY=${TOGETHER_API_KEY}" >> .env
+          echo "API_SECRET=${API_SECRET}" >> .env
+          echo "NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}" >> .env
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .next/cache/**/*
+      - .npm/**/*
