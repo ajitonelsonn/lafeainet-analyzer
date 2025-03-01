@@ -20,148 +20,28 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_PORT: ${{ secrets.DB_PORT }}
       TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-      APP_URL: "https://lafeainet-analyzer.vercel.app"
+      APP_URL: ${{ secrets.APP_URL }}
       API_SECRET: ${{ secrets.API_SECRET }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check URL availability
-        id: url-check
-        run: |
-          echo "Checking if API URL is accessible: ${APP_URL}"
-          STATUS_CODE=$(curl -s -L -o /dev/null -w "%{http_code}" ${APP_URL})
-          echo "API endpoint returned status code: $STATUS_CODE"
-          if [[ "$STATUS_CODE" -ge 200 && "$STATUS_CODE" -lt 400 ]]; then
-            echo "API endpoint is accessible"
-            echo "url_accessible=true" >> $GITHUB_OUTPUT
-          else
-            echo "API endpoint is not accessible (status code: $STATUS_CODE)"
-            echo "url_accessible=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check database connection
-        id: db-check
-        run: |
-          echo "Testing database connection..."
-          sudo apt-get update && sudo apt-get install -y mysql-client
-          if mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" -P "$DB_PORT" -e "SELECT 1 FROM dual;" "$DB_NAME"; then
-            echo "Database connection successful"
-            echo "db_connection=success" >> $GITHUB_OUTPUT
-          else
-            echo "Database connection failed"
-            echo "db_connection=failed" >> $GITHUB_OUTPUT
-          fi
-        continue-on-error: true
-
-      - name: Check Together AI access
-        id: ai-check
-        run: |
-          echo "Testing Together AI API access..."
-          RESPONSE=$(curl -s "https://api.together.xyz/v1/models" \
-            -H "Authorization: Bearer $TOGETHER_API_KEY")
-          if echo "$RESPONSE" | grep -q "object"; then
-            echo "Together AI connection successful"
-            echo "ai_connection=success" >> $GITHUB_OUTPUT
-          else
-            echo "Together AI connection failed"
-            echo "ai_connection=failed" >> $GITHUB_OUTPUT
-            echo "Response: $RESPONSE"
-          fi
-        continue-on-error: true
-
       - name: Run Analysis
-        id: analysis
         run: |
-          echo "Starting analysis process..."
-          echo "Sending request to: ${APP_URL}/api/analyze"
-          
-          # Use -L flag to follow redirects
-          RESPONSE=$(curl -s -L -X POST "${APP_URL}/api/analyze" \
+          curl -X POST "${{ secrets.APP_URL }}/api/analyze" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.API_SECRET }}" \
-            -w "\n%{http_code}")
-          
-          HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
-          
-          echo "Response code: $HTTP_CODE"
-          echo "Response body: $HTTP_BODY"
-          
-          if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
-            echo "Analysis request successful"
-            echo "analysis_status=success" >> $GITHUB_OUTPUT
-          else
-            echo "Analysis request failed with status code: $HTTP_CODE"
-            echo "analysis_status=failed" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-      - name: Create diagnostic report
-        if: always()
-        run: |
-          echo "# Diagnostic Report" > diagnostic_report.md
-          echo "Run at: $(date)" >> diagnostic_report.md
-          
-          echo "## URL Check" >> diagnostic_report.md
-          if [[ "${{ steps.url-check.outcome }}" == "success" ]]; then
-            echo "Outcome: Success" >> diagnostic_report.md
-            echo "API Accessibility: ${{ steps.url-check.outputs.url_accessible || 'Unknown' }}" >> diagnostic_report.md
-          else
-            echo "Outcome: Failed" >> diagnostic_report.md
-          fi
-          
-          echo "## Database Check" >> diagnostic_report.md
-          if [[ "${{ steps.db-check.outcome }}" == "success" ]]; then
-            echo "Outcome: Success" >> diagnostic_report.md
-            echo "Connection Status: ${{ steps.db-check.outputs.db_connection || 'Unknown' }}" >> diagnostic_report.md
-          else
-            echo "Outcome: Failed" >> diagnostic_report.md
-          fi
-          
-          echo "## Together AI Check" >> diagnostic_report.md
-          if [[ "${{ steps.ai-check.outcome }}" == "success" ]]; then
-            echo "Outcome: Success" >> diagnostic_report.md
-            echo "API Access: ${{ steps.ai-check.outputs.ai_connection || 'Unknown' }}" >> diagnostic_report.md
-          else
-            echo "Outcome: Failed" >> diagnostic_report.md
-          fi
-          
-          echo "## Analysis Result" >> diagnostic_report.md
-          if [[ "${{ steps.analysis.outcome }}" == "success" ]]; then
-            echo "Outcome: Success" >> diagnostic_report.md
-            echo "Status: ${{ steps.analysis.outputs.analysis_status || 'Unknown' }}" >> diagnostic_report.md
-          else
-            echo "Outcome: Failed" >> diagnostic_report.md
-          fi
-          
-          cat diagnostic_report.md
+            --fail
 
       - name: Create Issue on Failure
         if: failure()
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            let diagnosticReport = '';
-            try {
-              if (fs.existsSync('diagnostic_report.md')) {
-                diagnosticReport = fs.readFileSync('diagnostic_report.md', 'utf8');
-              }
-            } catch (error) {
-              console.error('Error reading diagnostic report:', error);
-            }
-            
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: 'Analysis Job Failed',
-              body: `Analysis job failed at ${new Date().toISOString()}
-              
-              ## Diagnostic Information
-              ${diagnosticReport}
-              
-              ## Run Details
-              See: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
-            });
+              body: `Analysis job failed at ${new Date().toISOString()}\nSee: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            })
