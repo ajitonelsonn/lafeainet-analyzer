@@ -50,6 +50,8 @@ LafeAINet-Analyzer is the AI processing engine that powers the LafeAINet ecosyst
 - **Automation**:
   - GitHub Actions for scheduled processing
 
+---
+
 ## 📊 System Architecture
 
 LafeAINet-Analyzer follows a modular architecture focused on reliable AI processing:
@@ -157,6 +159,8 @@ The analyzer processes reports through several stages:
 4. **Result Storage**: Analysis results are stored back in the database
 5. **Dashboard Integration**: Results are displayed in LafeAINet-Dashboard
 
+---
+
 ## 🔧 Installation and Setup
 
 ### Prerequisites
@@ -212,15 +216,20 @@ The analyzer processes reports through several stages:
    - Add all environment variables as repository secrets
    - Add `APP_URL` pointing to your deployed instance
 
+---
+
 ## 🌱 The Bigger Picture
 
-LafeAINet-Analyzer is part of LafeAINet to improving connectivity in Timor-Leste:
+LafeAINet-Analyzer is part of LafeAINet, an initiative aimed at improving connectivity in Timor-Leste:
 
-- **LafeAINet-Report**: Collects user network experiences and metrics
-- **LafeAINet-Analyzer**: Processes the data with AI (this repository)
-- **LafeAINet-Dashboard**: Visualizes insights and provider comparisons
+- **[LafeAINet](https://github.com/ajitonelsonn/LafeAINet)**: The main repository accumulating all three applications in the ecosystem
+- **[LafeAINet-Report](https://github.com/ajitonelsonn/lafeainet-report)**: Collects user network experiences and metrics
+- **[LafeAINet-Analyzer](https://github.com/ajitonelsonn/lafeainet-analyzer)**: Processes the data with AI (this repository)
+- **[LafeAINet-Dashboard](https://github.com/ajitonelsonn/lafeainet-dashboard)**: Visualizes insights and provider comparisons
 
 Together, these components create a comprehensive system for understanding and improving network infrastructure in underserved areas.
+
+---
 
 ## Analysis Flow Diagram
 
@@ -342,6 +351,8 @@ SET sentiment_score = 0.8,
 WHERE id = 510001
 ```
 
+---
+
 ## 🔒 Privacy Considerations
 
 LafeAINet-Analyzer is designed with privacy in mind:
@@ -353,7 +364,7 @@ LafeAINet-Analyzer is designed with privacy in mind:
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
