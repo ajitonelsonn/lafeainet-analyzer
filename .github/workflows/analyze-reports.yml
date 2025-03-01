@@ -20,7 +20,7 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_PORT: ${{ secrets.DB_PORT }}
       TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-      APP_URL: ${{ secrets.APP_URL }}
+      APP_URL: "https://lafeainet-analyzer.vercel.app"
       API_SECRET: ${{ secrets.API_SECRET }}
 
     steps:
@@ -30,8 +30,8 @@ jobs:
       - name: Check URL availability
         id: url-check
         run: |
-          echo "Checking if API URL is accessible: ${{ secrets.APP_URL }}"
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.APP_URL }})
+          echo "Checking if API URL is accessible: ${APP_URL}"
+          STATUS_CODE=$(curl -s -L -o /dev/null -w "%{http_code}" ${APP_URL})
           echo "API endpoint returned status code: $STATUS_CODE"
           if [[ "$STATUS_CODE" -ge 200 && "$STATUS_CODE" -lt 400 ]]; then
             echo "API endpoint is accessible"
@@ -45,7 +45,7 @@ jobs:
         id: db-check
         run: |
           echo "Testing database connection..."
-          apt-get update && apt-get install -y mysql-client
+          sudo apt-get update && sudo apt-get install -y mysql-client
           if mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" -P "$DB_PORT" -e "SELECT 1 FROM dual;" "$DB_NAME"; then
             echo "Database connection successful"
             echo "db_connection=success" >> $GITHUB_OUTPUT
@@ -53,6 +53,7 @@ jobs:
             echo "Database connection failed"
             echo "db_connection=failed" >> $GITHUB_OUTPUT
           fi
+        continue-on-error: true
 
       - name: Check Together AI access
         id: ai-check
@@ -68,13 +69,16 @@ jobs:
             echo "ai_connection=failed" >> $GITHUB_OUTPUT
             echo "Response: $RESPONSE"
           fi
+        continue-on-error: true
 
       - name: Run Analysis
         id: analysis
         run: |
           echo "Starting analysis process..."
-          echo "Sending request to: ${{ secrets.APP_URL }}/api/analyze"
-          RESPONSE=$(curl -s -X POST "${{ secrets.APP_URL }}/api/analyze" \
+          echo "Sending request to: ${APP_URL}/api/analyze"
+          
+          # Use -L flag to follow redirects
+          RESPONSE=$(curl -s -L -X POST "${APP_URL}/api/analyze" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.API_SECRET }}" \
             -w "\n%{http_code}")
@@ -95,17 +99,43 @@ jobs:
           fi
 
       - name: Create diagnostic report
+        if: always()
         run: |
           echo "# Diagnostic Report" > diagnostic_report.md
           echo "Run at: $(date)" >> diagnostic_report.md
+          
           echo "## URL Check" >> diagnostic_report.md
-          echo "API Accessibility: ${{ steps.url-check.outputs.url_accessible }}" >> diagnostic_report.md
+          if [[ "${{ steps.url-check.outcome }}" == "success" ]]; then
+            echo "Outcome: Success" >> diagnostic_report.md
+            echo "API Accessibility: ${{ steps.url-check.outputs.url_accessible || 'Unknown' }}" >> diagnostic_report.md
+          else
+            echo "Outcome: Failed" >> diagnostic_report.md
+          fi
+          
           echo "## Database Check" >> diagnostic_report.md
-          echo "Connection Status: ${{ steps.db-check.outputs.db_connection }}" >> diagnostic_report.md
+          if [[ "${{ steps.db-check.outcome }}" == "success" ]]; then
+            echo "Outcome: Success" >> diagnostic_report.md
+            echo "Connection Status: ${{ steps.db-check.outputs.db_connection || 'Unknown' }}" >> diagnostic_report.md
+          else
+            echo "Outcome: Failed" >> diagnostic_report.md
+          fi
+          
           echo "## Together AI Check" >> diagnostic_report.md
-          echo "API Access: ${{ steps.ai-check.outputs.ai_connection }}" >> diagnostic_report.md
+          if [[ "${{ steps.ai-check.outcome }}" == "success" ]]; then
+            echo "Outcome: Success" >> diagnostic_report.md
+            echo "API Access: ${{ steps.ai-check.outputs.ai_connection || 'Unknown' }}" >> diagnostic_report.md
+          else
+            echo "Outcome: Failed" >> diagnostic_report.md
+          fi
+          
           echo "## Analysis Result" >> diagnostic_report.md
-          echo "Status: ${{ steps.analysis.outputs.analysis_status || 'Unknown' }}" >> diagnostic_report.md
+          if [[ "${{ steps.analysis.outcome }}" == "success" ]]; then
+            echo "Outcome: Success" >> diagnostic_report.md
+            echo "Status: ${{ steps.analysis.outputs.analysis_status || 'Unknown' }}" >> diagnostic_report.md
+          else
+            echo "Outcome: Failed" >> diagnostic_report.md
+          fi
+          
           cat diagnostic_report.md
 
       - name: Create Issue on Failure
