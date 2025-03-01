@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
+import Header from "@/components/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,23 +32,20 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
-        <header className="bg-blue-600 text-white py-4 px-6 shadow-md">
-          <div className="max-w-6xl mx-auto">
-            <h1 className="text-xl font-semibold">LafeAINet-Analyzer</h1>
-            <p className="text-sm text-blue-100">
-              Network quality analysis service
-            </p>
+        <Providers>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-grow">{children}</main>
+            <footer className="border-t bg-white py-4 px-6 text-center text-sm text-gray-500">
+              <div className="max-w-6xl mx-auto">
+                <p>
+                  © 2025 LafeAINet - AI-powered connectivity monitoring for
+                  Timor-Leste
+                </p>
+              </div>
+            </footer>
           </div>
-        </header>
-        <main className="max-w-6xl mx-auto p-6">{children}</main>
-        <footer className="border-t bg-white py-4 px-6 text-center text-sm text-gray-500">
-          <div className="max-w-6xl mx-auto">
-            <p>
-              © 2025 LafeAINet - AI-powered connectivity monitoring for
-              Timor-Leste
-            </p>
-          </div>
-        </footer>
+        </Providers>
       </body>
     </html>
   );

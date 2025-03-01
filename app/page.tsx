@@ -1,9 +1,16 @@
-// app/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import { BarChart, Signal, Users } from "lucide-react";
+import {
+  BarChart,
+  Signal,
+  Users,
+  RefreshCw,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
+import ManualAnalysisButton from "@/components/ManualAnalysisButton";
 
 interface AnalysisStats {
   totalReports: number;
@@ -21,15 +28,23 @@ interface AnalysisStats {
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<AnalysisStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string>("reportCount");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
+    if (refreshing) return;
+
+    setRefreshing(true);
+
     try {
       const response = await fetch("/api/analysis-stats");
       const data = await response.json();
       if (data.success) {
         setStats(data.stats);
+        setError(null);
       } else {
         setError(data.error || "Failed to fetch statistics");
       }
@@ -38,14 +53,13 @@ export default function Home() {
       console.error("Error:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [refreshing]);
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [fetchStats]);
 
   const getSentimentColor = (score: number) => {
     if (score > 0.5) return "text-green-500";
@@ -61,16 +75,62 @@ export default function Home() {
     return "text-red-500";
   };
 
+  const getAnalysisRateColor = (rate: number) => {
+    if (rate >= 90) return "text-green-500";
+    if (rate >= 70) return "text-blue-500";
+    if (rate >= 50) return "text-yellow-500";
+    return "text-red-500";
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const getSortedProviderStats = () => {
+    if (!stats) return [];
+
+    return [...stats.providerStats].sort((a, b) => {
+      let comparison = 0;
+
+      if (sortField === "providerName") {
+        comparison = a.providerName.localeCompare(b.providerName);
+      } else if (sortField === "reportCount") {
+        comparison = a.reportCount - b.reportCount;
+      } else if (sortField === "avgSentiment") {
+        comparison = a.avgSentiment - b.avgSentiment;
+      } else if (sortField === "avgQuality") {
+        comparison = a.avgQuality - b.avgQuality;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  };
+
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+    <main className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <h1 className="text-3xl font-bold text-gray-900">
             Network Analysis Dashboard
           </h1>
-          <p className="text-sm text-gray-500">
-            Auto-refreshes every 5 minutes
-          </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={fetchStats}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              />
+              Refresh Data
+            </button>
+            <ManualAnalysisButton />
+          </div>
         </div>
 
         {loading ? (
@@ -82,10 +142,10 @@ export default function Home() {
             {error}
           </div>
         ) : stats ? (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition-all duration-200 hover:shadow-md">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-blue-50 rounded-lg">
                     <Users className="h-6 w-6 text-blue-500" />
@@ -97,22 +157,35 @@ export default function Home() {
                 <div className="space-y-4">
                   <div>
                     <div className="text-3xl font-bold text-gray-900">
-                      {stats.totalReports}
+                      {stats.totalReports.toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-500">Total Reports</div>
                   </div>
-                  <div>
-                    <div className="text-2xl font-semibold text-blue-500">
-                      {stats.analyzedReports}
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <div className="text-2xl font-semibold text-blue-500">
+                        {stats.analyzedReports.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Analyzed Reports
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      Analyzed Reports
+                    <div
+                      className={`text-sm font-medium ${getAnalysisRateColor(
+                        (stats.analyzedReports / stats.totalReports) * 100
+                      )}`}
+                    >
+                      {(
+                        (stats.analyzedReports / stats.totalReports) *
+                        100
+                      ).toFixed(1)}
+                      %
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition-all duration-200 hover:shadow-md">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-green-50 rounded-lg">
                     <Signal className="h-6 w-6 text-green-500" />
@@ -154,7 +227,7 @@ export default function Home() {
                           stats.averageQuality
                         )}`}
                       >
-                        {stats.averageQuality.toFixed(1)}
+                        {stats.averageQuality.toFixed(1)} / 10
                       </span>
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -169,7 +242,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 transition-all duration-200 hover:shadow-md">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-purple-50 rounded-lg">
                     <BarChart className="h-6 w-6 text-purple-500" />
@@ -185,20 +258,26 @@ export default function Home() {
                   <div className="text-xl font-semibold text-gray-900">
                     {format(new Date(stats.lastAnalysisTime), "PPp")}
                   </div>
-                  <div className="mt-4 text-sm text-gray-500">
-                    Analysis Rate:{" "}
-                    {(
-                      (stats.analyzedReports / stats.totalReports) *
-                      100
-                    ).toFixed(1)}
-                    %
+                  <div className="mt-4 flex items-center gap-1 text-sm text-gray-500">
+                    <span>Processing rate:</span>
+                    <span
+                      className={getAnalysisRateColor(
+                        (stats.analyzedReports / stats.totalReports) * 100
+                      )}
+                    >
+                      {(
+                        (stats.analyzedReports / stats.totalReports) *
+                        100
+                      ).toFixed(1)}
+                      %
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Provider Stats Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-6 border-b border-gray-100">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Provider Statistics
@@ -208,31 +287,75 @@ export default function Home() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="text-left py-3 px-6 text-sm font-medium text-gray-500">
-                        Provider
+                      <th
+                        className="text-left py-3 px-6 text-sm font-medium text-gray-500 cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort("providerName")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Provider
+                          {sortField === "providerName" &&
+                            (sortDirection === "asc" ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            ))}
+                        </div>
                       </th>
-                      <th className="text-left py-3 px-6 text-sm font-medium text-gray-500">
-                        Reports
+                      <th
+                        className="text-left py-3 px-6 text-sm font-medium text-gray-500 cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort("reportCount")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Reports
+                          {sortField === "reportCount" &&
+                            (sortDirection === "asc" ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            ))}
+                        </div>
                       </th>
-                      <th className="text-left py-3 px-6 text-sm font-medium text-gray-500">
-                        Avg. Sentiment
+                      <th
+                        className="text-left py-3 px-6 text-sm font-medium text-gray-500 cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort("avgSentiment")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Avg. Sentiment
+                          {sortField === "avgSentiment" &&
+                            (sortDirection === "asc" ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            ))}
+                        </div>
                       </th>
-                      <th className="text-left py-3 px-6 text-sm font-medium text-gray-500">
-                        Avg. Quality
+                      <th
+                        className="text-left py-3 px-6 text-sm font-medium text-gray-500 cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort("avgQuality")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Avg. Quality
+                          {sortField === "avgQuality" &&
+                            (sortDirection === "asc" ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            ))}
+                        </div>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {stats.providerStats.map((provider) => (
+                    {getSortedProviderStats().map((provider) => (
                       <tr
                         key={provider.providerName}
-                        className="hover:bg-gray-50"
+                        className="hover:bg-gray-50 transition-colors"
                       >
                         <td className="py-4 px-6 text-sm text-gray-900 font-medium">
                           {provider.providerName}
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-500">
-                          {provider.reportCount}
+                          {provider.reportCount.toLocaleString()}
                         </td>
                         <td className="py-4 px-6 text-sm">
                           <span
