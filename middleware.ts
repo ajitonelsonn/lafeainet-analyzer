@@ -8,6 +8,7 @@ export async function middleware(request: NextRequest) {
   // Enhanced public paths list - these don't require authentication
   const isPublicPath =
     pathname === "/login" ||
+    pathname === "/" ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/debug-session") || // Allow debug route
     pathname.startsWith("/_next") ||

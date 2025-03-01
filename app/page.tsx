@@ -9,7 +9,9 @@ import {
   RefreshCw,
   ArrowUp,
   ArrowDown,
+  LogIn,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface AnalysisStats {
   totalReports: number;
@@ -26,12 +28,14 @@ interface AnalysisStats {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<AnalysisStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string>("reportCount");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
 
   const fetchStats = useCallback(async (isManualRefresh = false) => {
     if (refreshing && !isManualRefresh) return;
@@ -40,16 +44,50 @@ export default function Home() {
 
     try {
       const response = await fetch("/api/analysis-stats");
-      const data = await response.json();
-      if (data.success) {
-        setStats(data.stats);
-        setError(null);
-      } else {
-        setError(data.error || "Failed to fetch statistics");
+
+      // Check if response is redirecting to login page
+      if (response.redirected) {
+        setIsAuthenticated(false);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // Check for unauthorized status
+      if (response.status === 401) {
+        setIsAuthenticated(false);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // Try to parse JSON response
+      try {
+        const data = await response.json();
+        if (data.success) {
+          setStats(data.stats);
+          setError(null);
+          setIsAuthenticated(true);
+        } else {
+          setError(data.error || "Failed to fetch statistics");
+        }
+      } catch (jsonError) {
+        // If we get here with HTML instead of JSON, likely unauthorized
+        setIsAuthenticated(false);
       }
     } catch (error) {
-      setError("Error fetching statistics");
+      // Check if error might be related to authentication
       console.error("Error:", error);
+      const errorString = String(error);
+      if (
+        errorString.includes("Unexpected token") ||
+        errorString.includes("<!DOCTYPE") ||
+        errorString.includes("SyntaxError")
+      ) {
+        setIsAuthenticated(false);
+      } else {
+        setError("Error fetching statistics");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -59,6 +97,35 @@ export default function Home() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  const redirectToLogin = () => {
+    router.push("/login");
+  };
+
+  // If not authenticated, show login prompt
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-sm p-8 max-w-md w-full text-center space-y-6">
+          <div className="mx-auto bg-blue-50 w-20 h-20 rounded-full flex items-center justify-center">
+            <LogIn className="h-10 w-10 text-blue-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Authentication Required
+          </h1>
+          <p className="text-gray-600">
+            You need to sign in to access the Network Analysis Dashboard.
+          </p>
+          <button
+            onClick={redirectToLogin}
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const getSentimentColor = (score: number) => {
     if (score > 0.5) return "text-green-500";

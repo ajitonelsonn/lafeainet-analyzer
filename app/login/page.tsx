@@ -42,6 +42,11 @@ function LoginForm() {
     }
   };
 
+  const applyTestCredentials = () => {
+    setUsername("adminn");
+    setPassword("123456A@");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -109,6 +114,22 @@ function LoginForm() {
                 <Loader2 className="animate-spin h-5 w-5 mr-3" />
               ) : null}
               Sign in
+            </button>
+          </div>
+
+          <div className="text-center text-sm text-gray-500 mt-2">
+            <p>
+              Test User: <span className="font-medium">adminn</span>
+            </p>
+            <p>
+              Password: <span className="font-medium">123456A@</span>
+            </p>
+            <button
+              type="button"
+              onClick={applyTestCredentials}
+              className="mt-2 text-blue-500 hover:text-blue-700 font-medium"
+            >
+              Use test credentials
             </button>
           </div>
         </form>
