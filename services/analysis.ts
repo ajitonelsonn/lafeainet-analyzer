@@ -53,7 +53,6 @@ export async function analyzeReports() {
   const connection = await getConnection();
 
   try {
-    // Get unanalyzed reports from last 30 minutes
     const [reports] = await connection.execute<ReportRow[]>(`
       SELECT 
         r.id,
@@ -64,7 +63,7 @@ export async function analyzeReports() {
       FROM network_reports r
       LEFT JOIN analysis_results a ON r.id = a.report_id
       WHERE a.sentiment_score IS NULL
-      AND r.created_at >= NOW() - INTERVAL 30 MINUTE
+      AND r.created_at >= NOW() - INTERVAL 120 MINUTE;
     `);
 
     console.log(`Found ${reports.length} reports to analyze`);
