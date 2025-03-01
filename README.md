@@ -1,7 +1,6 @@
 # 🌏 LafeAINet-Analyzer
 
 <div align="center">
-  <img src="https://img.shields.io/badge/AWS%20Amplify-FF9900?style=flat-square&logo=awsamplify&logoColor=white" alt="AWS Amplify">
   <img src="https://img.shields.io/badge/React-19.0-blue?style=flat-square&logo=react" alt="React">
   <img src="https://img.shields.io/badge/Together%20AI-Llama%203.3-yellow?style=flat-square" alt="Together AI">
   <img src="https://img.shields.io/badge/TiDB-MySQL%20compatible-4479A1?style=flat-square&logo=mysql" alt="TiDB">
