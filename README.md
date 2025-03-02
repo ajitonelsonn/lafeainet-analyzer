@@ -17,9 +17,6 @@
   <p><a href="https://lafeainet-analyzer.onrender.com">View Live Demo →</a></p>
 </div>
 
-<p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Flag_of_East_Timor.svg/2560px-Flag_of_East_Timor.svg.png" alt="Timor-Leste Connectivity" width="200">
-</p>
 
 ## 🌍 About LafeAINet-Analyzer
 
